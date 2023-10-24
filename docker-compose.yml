@@ -1,0 +1,92 @@
+version: "3.7"
+services:
+  #PHP Service
+  docker_with_laravel:
+    build:
+      args:
+        user: mominbd532
+        uid: 1000
+      context: .
+      dockerfile: .docker/Dockerfile
+    image: docker_with_laravel
+    restart: unless-stopped
+    working_dir: /var/www/
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    volumes:
+      - ./:/var/www
+      - ./.docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - docker_with_laravel_network
+
+  #MySQL Service
+  docker_with_laravel_db:
+    image: mysql:8.0
+    container_name: docker_with_laravel_db
+    restart: unless-stopped
+    ports:
+      - "${DOCKER_DB_PORT}:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - docker_with_laravel_mysql_data:/var/lib/mysql
+    networks:
+      - docker_with_laravel_network
+
+  #Nginx Service
+  docker_with_laravel_nginx:
+    image: nginx:alpine
+    container_name: docker_with_laravel_nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "${DOCKER_APP_PORT}:80"
+      - "${DOCKER_APP_SSL_PORT}:443"
+    volumes:
+      - ./:/var/www
+      - ./.docker/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - docker_with_laravel_network
+  # phpmyadmin service
+  docker_with_laravel_phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: unless-stopped
+    container_name: docker_with_laravel_phpmyadmin
+    depends_on:
+      - docker_with_laravel_db
+    ports:
+      - "${DOCKER_PHPMYADMIN_PORT}:80"
+    environment:
+      PMA_HOST: docker_with_laravel_db
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - docker_with_laravel_network
+
+  docker_with_laravel_redis_cache:
+    image: redis:alpine
+    restart: always
+    container_name: docker_with_laravel_redis_cache
+    ports:
+      - '${DOCKER_REDIS_PORT}:6379'
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - docker_with_laravel_cache:/data
+    networks:
+      - docker_with_laravel_network
+
+#Docker Networks
+networks:
+  docker_with_laravel_network:
+    driver: bridge
+
+#Volumes
+volumes:
+  docker_with_laravel_mysql_data:
+  docker_with_laravel_cache:
