@@ -1,6 +1,6 @@
 FROM php:8.2-fpm
 
-LABEL maintainer="Ruhul Amin"
+LABEL maintainer="Md. Mominul Islam"
 
 # Arguments defined in docker-compose.yml
 ARG user
